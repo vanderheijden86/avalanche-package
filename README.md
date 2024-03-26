@@ -125,6 +125,58 @@ graph TD;
     TeleporterRegistry -->|Track versions & deployments| TeleporterMessenger
 ```
 
+
+## Citibank Use Case
+### Evergreen Subnets
+```mermaid
+graph TD
+    AVA[Avalanche Network] -->|Consists of| XChain[X Chain: Asset Exchange]
+    AVA -->|Consists of| CChain[C Chain: Contract Execution]
+    AVA -->|Consists of| PChain[P Chain: Platform Management]
+
+    PChain -->|Manages| Validators[Validators]
+    PChain -->|Manages| Subnets[Subnets]
+
+    Subnets -->|Includes| Evergreen[Evergreen Subnets]
+    Subnets -.->|Interact With| XChain
+    Subnets -.->|Interact With| CChain
+
+    Evergreen -->|Hosts| CitiApp[Citi's FX Trading Application]
+
+    CitiApp -->|Uses| WarpMessaging[Avalanche Warp Messaging]
+    WarpMessaging -.->|Facilitates Interoperability| XChain
+    WarpMessaging -.->|Facilitates Interoperability| CChain
+    WarpMessaging -.->|Facilitates Interoperability| PChain
+
+    classDef blockchain fill:green,stroke:#333,stroke-width:4px;
+    class XChain,CChain,PChain,Subnets,Evergreen,CitiApp blockchain;
+
+
+```
+
+
+
+### Project Guardian Initiative
+```mermaid
+graph LR
+    AvaCloud[AvaCloud Managed Service] -->|Provides| Evergreen[Evergreen Subnets]
+    Evergreen -->|Hosts| FXApp[Citi's FX Trading Application]
+    FXApp -->|Utilizes| AWM[Avalanche Warp Messaging for Interoperability]
+
+    FXApp -->|Streams| PriceQuotes[Real-time FX Price Quotes]
+    FXApp -->|Records| TradeExecutions[Simulated Trade Executions]
+
+    ProjectGuardian[Project Guardian Initiative] -->|Trials| FXApp
+    Evergreen -.->|Custom Features| EVM[EVM Compatibility]
+    Evergreen -.->|Custom Features| PermValidation[Permissioned Validation]
+    Evergreen -.->|Custom Features| Privacy[Network Privacy]
+
+    classDef blockchain fill:#green,stroke:#333,stroke-width:4px;
+    class Evergreen,FXApp,AvaCloud blockchain;
+
+```
+
+
 Overall Kurtosis Architecture
 ----------------
 ```mermaid
