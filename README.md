@@ -124,6 +124,11 @@ graph TD;
     dAppB -->|Receive messages| TeleporterMessenger
     TeleporterRegistry -->|Track versions & deployments| TeleporterMessenger
 ```
+The use cases tested included:
+
+- End-to-end token transfer: ABN AMRO’s wealth management arm instructed Citi to tokenize and transfer the Wellington-issued private equity fund to a WisdomTree client wallet on Avalanche Spruce while leveraging encoded compliance checks and identity credentials issued by WisdomTree and Tokeny. 
+- Secondary transfer to enable trading: Enabled bilateral tokenized fund transfer on Spruce between WisdomTree clients also leveraging encoded compliance checks and identity credentials.
+- Validating new capabilities with collateralized lending: Using DTCC Digital Assets’ Composer, lending and collateral smart contracts were deployed on Spruce to process an end to end securities lending transaction where an investor pledged tokenized private equity funds to borrow WisdomTree Money Market fund tokens.
 
 ## Citibank Use Case Private Markets Tokenization
 ```mermaid
