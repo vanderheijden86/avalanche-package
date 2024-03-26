@@ -1,7 +1,24 @@
 :small_red_triangle: Avalanche Package
 ======================================
-
 This is a [Kurtosis package](https://docs.kurtosis.com/concepts-reference/packages) that spins up a non-staking Avalanche node. By default, this package works locally over Docker but can also be deployed on Kubernetes if so desired. You may optionally specify the number of nodes you wish to start locally with a simple `arg` passed in at execution time.
+
+<!-- TOC -->
+* [:small_red_triangle: Avalanche Package](#small_red_triangle-avalanche-package)
+  * [Run this package](#run-this-package)
+  * [Overall Avalanche architecture](#overall-avalanche-architecture)
+    * [Avalanche Nodes & Chains](#avalanche-nodes--chains)
+    * [Teleporter Messaging](#teleporter-messaging)
+  * [Citibank Use Case](#citibank-use-case)
+    * [Evergreen Subnets](#evergreen-subnets)
+    * [Project Guardian Initiative](#project-guardian-initiative)
+  * [Overall Kurtosis Architecture](#overall-kurtosis-architecture)
+  * [Configuration](#configuration)
+  * [Custom Subnet Genesis](#custom-subnet-genesis)
+  * [Fixed Ports](#fixed-ports)
+  * [Use this package in your package](#use-this-package-in-your-package)
+  * [Kubernetes Configuration](#kubernetes-configuration)
+  * [Develop on this package](#develop-on-this-package)
+<!-- TOC -->
 
 Run this package
 ----------------
@@ -14,6 +31,138 @@ To run it locally, [install Kurtosis][install-kurtosis] and run the same.
 
 To blow away the created [enclave][enclaves-reference], run `kurtosis clean -a`.
 
+## Avalanche architecture
+### Avalanche Nodes & Chains
+```mermaid
+graph TD;
+    subgraph Avalanche Node
+    Node[Node Server] -->|RPC & WebSocket Endpoints| Routes
+    Node -->|Gossip Protocol| Gossip
+    Node -->|Consensus Messages| Consensus
+
+    subgraph X Chain
+        XChain[X Chain] -->|Asset Exchange| XConsensus[Consensus]
+        Gossip --> XChain
+        Consensus --> XConsensus
+    end
+
+    subgraph C Chain
+        CChain[C Chain] -->|Smart Contracts| CConsensus[Consensus]
+        Gossip --> CChain
+        Consensus --> CConsensus
+    end
+
+    subgraph P Chain
+        PChain[P Chain] -->|Validator Management| PConsensus[Consensus]
+        Gossip --> PChain
+        Consensus --> PConsensus
+    end
+
+    end
+
+    Routes -.->|/ext/bc/...| XChain
+    Routes -.->|/ext/bc/...| CChain
+    Routes -.->|/ext/bc/...| PChain
+
+    classDef chain fill:green,stroke:#333,stroke-width:4px;
+    class XChain,CChain,PChain chain;
+
+
+
+```
+
+The P, C, and X chains within the Avalanche platform are designed to fulfill distinct roles but are interconnected and communicate with each other:
+
+1. **P-Chain (Platform Chain)**: The P-Chain manages the Avalanche network's validators, tracks active subnets, and enables the creation of new subnets. Communication with the X and C chains can be necessary for:
+   - Validator management: Validators might have stakes in multiple chains, requiring coordination between the P-Chain (which manages staking and consensus) and other chains.
+   - Subnet creation and management: As the P-Chain oversees subnets, creating a blockchain on a subnet (whether on the X or C chain) requires coordination to ensure proper setup and validation.
+
+2. **X-Chain (Exchange Chain)**: The X-Chain facilitates asset creation and exchange. Interactions with the P and C chains include:
+   - Cross-chain asset transfers: Users might want to move assets between the X-Chain and C-Chain for different purposes, such as using X-Chain assets within smart contracts on the C-Chain.
+   - Staking rewards and fees: Validators and delegators earn rewards for their services, which might involve transferring assets across chains.
+
+3. **C-Chain (Contract Chain)**: The C-Chain supports smart contracts using the Ethereum Virtual Machine (EVM). Reasons for communication with the P and X chains include:
+   - Smart contracts involving multiple asset types: Contracts might interact with assets from the X-Chain or require information from the P-Chain.
+   - Decentralized finance (DeFi) applications: DeFi platforms may use assets across the Avalanche ecosystem, necessitating seamless asset flow between chains.
+
+Inter-chain communication in Avalanche is facilitated through cross-chain transfer protocols, enabling assets and information to move securely between the P, C, and X chains. This interconnectedness allows Avalanche to offer a comprehensive blockchain platform supporting various use cases, from simple asset transfers to complex smart contracts and decentralized applications.
+
+### Questions and Answers
+
+1. **Tokens**: So can you only have token balances on the X-chain? I mean, if the C-chain is for smart contracts and is EVM-compatible this means you can have an ERC20 token right there no?
+
+    **Answer**: Yes, you are correct. While the X-Chain (Exchange Chain) in Avalanche is designed for creating and trading digital assets with complex custom rule sets, the C-Chain (Contract Chain) is fully EVM-compatible and supports smart contracts. This means that you can indeed create, deploy, and manage ERC20 tokens (and other types of tokens supported by the Ethereum ecosystem) directly on the C-Chain. Token balances related to these ERC20 tokens and interactions with them (transfers, allowances, etc.) are handled within the C-Chain.
+
+2. If UniSwap is on Avalanche, would it need to read and write token balances from / to the X-chain and deploy its other smart contracts on the P-Chain?
+
+    **Answer**: Uniswap, or any other decentralized exchange (DEX) platform that is deployed on the Avalanche C-Chain, would primarily interact with ERC20 tokens directly on the C-Chain. Since the C-Chain supports smart contracts and is EVM-compatible, Uniswap's smart contracts (such as liquidity pools and swapping functions) would be deployed on the C-Chain, not the P-Chain. The P-Chain (Platform Chain) is used for coordinating validators, creating subnets, and staking AVAX, not for deploying general-purpose smart contracts. Therefore, Uniswap would not need to deploy its smart contracts on the P-Chain, nor would it need to read and write token balances from/to the X-Chain for its operations. Transactions and token balances related to the trading activities on Uniswap would be managed within the C-Chain ecosystem.
+
+
+### Teleporter Messaging
+```mermaid
+graph TD;
+    subgraph Avalanche ["Avalanche Network"]
+        subgraph CChain ["C-Chain (EVM)"]
+            TeleporterMessenger["TeleporterMessenger Smart Contract"]
+            TeleporterRegistry["TeleporterRegistry Smart Contract"]
+        end
+        
+        subgraph SubnetA ["Subnet A"]
+            dAppA["dApp A"]
+        end
+        
+        subgraph SubnetB ["Subnet B"]
+            dAppB["dApp B"]
+        end
+        
+        AWM["Avalanche Warp Messaging (AWM)"]
+    end
+    
+    TeleporterMessenger -->|Invoke contract functions| AWM
+    AWM -->|Deliver messages| SubnetA & SubnetB
+    dAppA -->|Send messages| TeleporterMessenger
+    dAppB -->|Receive messages| TeleporterMessenger
+    TeleporterRegistry -->|Track versions & deployments| TeleporterMessenger
+```
+
+Overall Kurtosis Architecture
+----------------
+```mermaid
+graph TD
+    subgraph ContainerOrchestrator[Container Orchestrator like Dockers or K8s]
+        subgraph APIEngine[Kurtosis Engine Container]
+        end
+        
+        subgraph Enclave1[Enclave A]
+            subgraph APIC1[APIC A]
+                Starlark1[Starlark Scripts A]
+            end
+            ServiceA1[Service A1]
+            ServiceA2[Service A2]
+        end
+        
+        subgraph Enclave2[Enclave B]
+            subgraph APIC2[APIC B]
+                Starlark2[Starlark Scripts B]
+            end
+            ServiceB1[Service B1]
+        end
+    end
+
+    CLI[Kurtosis CLI] -->|API requests| APIEngine
+    APIEngine -->|Manages| Enclave1
+    APIEngine -->|Manages| Enclave2
+    Enclave1 -->|Hosts| APIC1
+    Enclave2 -->|Hosts| APIC2
+    APIC1 -->|Manages| ServiceA1
+    APIC1 -->|Manages| ServiceA2
+    APIC2 -->|Manages| ServiceB1
+
+    classDef kurtosis fill:green,stroke:#333,stroke-width:4px;
+    class CLI,APIEngine,Enclave1,Enclave2,ServiceA1,ServiceA2,ServiceB1,APIC1,APIC2,Starlark1,Starlark2 kurtosis;
+
+
+```
 ## Configuration
 
 <!-- You can parameterize your package as you prefer; see https://docs.kurtosis.com/next/concepts-reference/args for more -->
