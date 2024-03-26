@@ -125,8 +125,46 @@ graph TD;
     TeleporterRegistry -->|Track versions & deployments| TeleporterMessenger
 ```
 
+## Citibank Use Case Private Markets Tokenization
+```mermaid
+graph TD;
+    subgraph Avalanche ["Avalanche Network"]
+        subgraph CChain ["C-Chain (EVM)"]
+            TeleporterMessenger["TeleporterMessenger Smart Contract"]
+            TeleporterRegistry["TeleporterRegistry Smart Contract"]
+        end
 
-## Citibank Use Case
+        subgraph SpruceSubnet ["Spruce Subnet (Evergreen)"]
+            Tokenization["Tokenization Process"]
+            IdentityVerification["Identity Verification"]
+            SmartContracts["Smart Contracts for Financial Services"]
+            DTCCComposer["DTCC Digital Assets' Composer"]
+        end
+        
+        subgraph SubnetA ["Subnet A"]
+            dAppA["dApp A"]
+        end
+        
+        subgraph SubnetB ["Subnet B"]
+            dAppB["dApp B"]
+        end
+        
+        AWM["Avalanche Warp Messaging (AWM)"]
+    end
+
+    TeleporterMessenger -->|Invoke contract functions| AWM
+    AWM -->|Deliver messages| SubnetA & SubnetB & SpruceSubnet
+    dAppA -->|Send messages| TeleporterMessenger
+    dAppB -->|Receive messages| TeleporterMessenger
+    TeleporterRegistry -->|Track versions & deployments| TeleporterMessenger
+
+    SpruceSubnet -->|Enables| Tokenization & IdentityVerification & SmartContracts & DTCCComposer
+    Tokenization -->|End-to-end token transfer| IdentityVerification
+    SmartContracts -->|Secondary transfer, Collateralized lending| DTCCComposer
+    IdentityVerification -->|Validate investor credentials| SmartContracts
+```
+
+## Citibank Use Case FX Trading
 ### Evergreen Subnets
 ```mermaid
 graph TD
