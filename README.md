@@ -125,101 +125,45 @@ graph TD;
     TeleporterRegistry -->|Track versions & deployments| TeleporterMessenger
 ```
 
-
-## Citibank Use Case Private Markets Tokenization
 ```mermaid
-graph TD;
-    subgraph Avalanche ["Avalanche Network"]
-        subgraph CChain ["C-Chain (EVM)"]
-            TeleporterMessenger["TeleporterMessenger Smart Contract"]
-            TeleporterRegistry["TeleporterRegistry Smart Contract"]
-        end
+sequenceDiagram
+    participant S as Script
+    participant G as Git
+    participant FS as File System
+    participant AV as Avalanche CLI
+    participant CD as Contracts/Deployment
 
-        subgraph SpruceSubnet ["Spruce Subnet (Evergreen)"]
-            Tokenization["Tokenization Process"]
-            IdentityVerification["Identity Verification"]
-            SmartContracts["Smart Contracts for Financial Services"]
-            DTCCComposer["DTCC Digital Assets' Composer"]
-        end
-        
-        subgraph SubnetA ["Subnet A"]
-            dAppA["dApp A"]
-        end
-        
-        subgraph SubnetB ["Subnet B"]
-            dAppB["dApp B"]
-        end
-        
-        AWM["Avalanche Warp Messaging (AWM)"]
-    end
-
-    TeleporterMessenger -->|Invoke contract functions| AWM
-    AWM -->|Deliver messages| SubnetA & SubnetB & SpruceSubnet
-    dAppA -->|Send messages| TeleporterMessenger
-    dAppB -->|Receive messages| TeleporterMessenger
-    TeleporterRegistry -->|Track versions & deployments| TeleporterMessenger
-
-    SpruceSubnet -->|Enables| Tokenization & IdentityVerification & SmartContracts & DTCCComposer
-    Tokenization -->|End-to-end token transfer| IdentityVerification
-    SmartContracts -->|Secondary transfer, Collateralized lending| DTCCComposer
-    IdentityVerification -->|Validate investor credentials| SmartContracts
-```
-The use cases tested included:
-
-- End-to-end token transfer: ABN AMRO’s wealth management arm instructed Citi to tokenize and transfer the Wellington-issued private equity fund to a WisdomTree client wallet on Avalanche Spruce while leveraging encoded compliance checks and identity credentials issued by WisdomTree and Tokeny. 
-- Secondary transfer to enable trading: Enabled bilateral tokenized fund transfer on Spruce between WisdomTree clients also leveraging encoded compliance checks and identity credentials.
-- Validating new capabilities with collateralized lending: Using DTCC Digital Assets’ Composer, lending and collateral smart contracts were deployed on Spruce to process an end to end securities lending transaction where an investor pledged tokenized private equity funds to borrow WisdomTree Money Market fund tokens.
-
-## Citibank Use Case FX Trading
-### Evergreen Subnets
-```mermaid
-graph TD
-    AVA[Avalanche Network] -->|Consists of| XChain[X Chain: Asset Exchange]
-    AVA -->|Consists of| CChain[C Chain: Contract Execution]
-    AVA -->|Consists of| PChain[P Chain: Platform Management]
-
-    PChain -->|Manages| Validators[Validators]
-    PChain -->|Manages| Subnets[Subnets]
-
-    Subnets -->|Includes| Evergreen[Evergreen Subnets]
-    Subnets -.->|Interact With| XChain
-    Subnets -.->|Interact With| CChain
-
-    Evergreen -->|Hosts| CitiApp[Citi's FX Trading Application]
-
-    CitiApp -->|Uses| WarpMessaging[Avalanche Warp Messaging]
-    WarpMessaging -.->|Facilitates Interoperability| XChain
-    WarpMessaging -.->|Facilitates Interoperability| CChain
-    WarpMessaging -.->|Facilitates Interoperability| PChain
-
-    classDef blockchain fill:green,stroke:#333,stroke-width:4px;
-    class XChain,CChain,PChain,Subnets,Evergreen,CitiApp blockchain;
+    S->>FS: Check if started with "--local-tests-only" (line 13)
+    FS->>S: Return directory prefix
+    S->>G: Configure global git settings (line 19)
+    S->>FS: Remove NETWORK_READY (line 34)
+    S->>AV: Start local Avalanche network (line 35)
+    AV->>FS: Clean network setup (line 35)
+    S->>FS: Create and configure genesis files (line 41-45)
+    S->>AV: Create subnets A, B, C (line 47, 57, 67)
+    AV->>S: Subnets created
+    S->>AV: Deploy subnets (line 47, 57, 67)
+    AV->>FS: Store blockchain & subnet IDs (line 74-80)
+    S->>CD: Deploy TeleporterMessenger contract (line 86)
+    CD->>AV: Send transactions (line 103-108)
+    AV->>CD: Return transaction status (line 103-108)
+    S->>CD: Initialize blockchain IDs on contracts (line 122-125)
+    CD->>AV: Send initialization transactions (line 122-125)
+    S->>CD: Deploy TeleporterRegistry to chains (line 135-147)
+    CD->>AV: Register deployments (line 135-147)
+    S->>AV: Send ether to relayer accounts (line 163-167)
+    AV->>S: Confirm transactions (line 163-167)
+    S->>FS: Write environment variables (line 186)
+    FS->>S: Variables exported
+    S->>FS: Create NETWORK_READY (line 190)
+    S-->>S: Trap EXIT for cleanup (line 192)
+    S->>AV: Monitor and stream logs (line 203-207)
+    S->>AV: Execute cleanup on EXIT (line 192)
+    AV-->>S: Network stopped
+    S->>FS: Remove NETWORK_READY (line 194)
 
 
 ```
-
-
-
-### Project Guardian Initiative
-```mermaid
-graph LR
-    AvaCloud[AvaCloud Managed Service] -->|Provides| Evergreen[Evergreen Subnets]
-    Evergreen -->|Hosts| FXApp[Citi's FX Trading Application]
-    FXApp -->|Utilizes| AWM[Avalanche Warp Messaging for Interoperability]
-
-    FXApp -->|Streams| PriceQuotes[Real-time FX Price Quotes]
-    FXApp -->|Records| TradeExecutions[Simulated Trade Executions]
-
-    ProjectGuardian[Project Guardian Initiative] -->|Trials| FXApp
-    Evergreen -.->|Custom Features| EVM[EVM Compatibility]
-    Evergreen -.->|Custom Features| PermValidation[Permissioned Validation]
-    Evergreen -.->|Custom Features| Privacy[Network Privacy]
-
-    classDef blockchain fill:#green,stroke:#333,stroke-width:4px;
-    class Evergreen,FXApp,AvaCloud blockchain;
-
-```
-
 
 Overall Kurtosis Architecture
 ----------------

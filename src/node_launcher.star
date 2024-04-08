@@ -33,7 +33,7 @@ def launch(plan, genesis, image, node_count, ephemeral_ports, min_cpu, min_memor
         launch_node_cmd = [
             "nohup",
             "/avalanchego/build/" + EXECUTABLE_PATH,
-            "--genesis=/tmp/data/genesis.json", 
+            "--genesis=/tmp/data/genesis.json",
             "--data-dir=" + node_data_dirpath,
             "--config-file=" + node_config_filepath,
             "--http-host=0.0.0.0",
@@ -74,7 +74,7 @@ def launch(plan, genesis, image, node_count, ephemeral_ports, min_cpu, min_memor
 
 
     for index in range(0, node_count):
-        node_name = NODE_NAME_PREFIX + str(index)     
+        node_name = NODE_NAME_PREFIX + str(index)
 
         node = nodes[node_name]
         launch_node_cmd = launch_commands[index]
@@ -96,7 +96,7 @@ def launch(plan, genesis, image, node_count, ephemeral_ports, min_cpu, min_memor
             recipe = ExecRecipe(
                 command = ["/bin/sh", "-c", " ".join(launch_node_cmd) + " >/dev/null 2>&1 &"],
             )
-        )            
+        )
 
         bootstrap_ips.append("{0}:{1}".format(node.ip_address, STAKING_PORT_NUM))
         bootstrap_id_file = NODE_ID_PATH.format(index)
@@ -119,7 +119,7 @@ def restart_nodes(plan, num_nodes, launch_commands, subnetId, vmId):
         node_name = NODE_NAME_PREFIX + str(index)
         launch_command = launch_commands[index]
         launch_command.append("--track-subnets={0}".format(subnetId))
-        
+
         # have no ps or pkill; so this is a work around
         plan.exec(
             service_name = node_name,
@@ -191,3 +191,32 @@ def download_to_path(plan, node_name, url, dest):
             command = ["/bin/sh", "-c", "curl {0} -o {1}".format(url, dest)]
         )
     )
+
+def launch_awm_relayer(plan, p_chain_api_url, info_api_url, source_blockchains, destination_blockchains):
+    # Define the AWM relayer configuration as a regular Python dictionary
+    awm_relayer_config = json.encode({
+    "p-chain-api-url": p_chain_api_url,
+    "info-api-url": info_api_url,
+    "storage-location": "./awm-relayer-storage",
+    "redis-url": "",
+    "process-missed-blocks": True,
+    "source-blockchains": source_blockchains,
+    "destination-blockchains": destination_blockchains
+    })
+
+    # Create a file artifact in Kurtosis (if this method is available)
+    artifact_name = "awm-relayer-config.json"
+    plan.upload_files(awm_relayer_config, artifact_name)
+
+    # Assuming your application can start with a command line argument for the config path
+    awm_relayer_service_config = ServiceConfig(
+        image="avaplatform/awm-relayer:v1.1.0",
+        entrypoint=["/bin/sh", "-c"],
+        cmd=[f"awm-relayer --config-file /configs/{artifact_name}"],
+        files={"/configs/": artifact_name}
+    )
+
+
+    # Add the AWM relayer service to the plan
+    plan.add_services({"awm-relayer": awm_relayer_service_config})
+    plan.print("AWM Relayer launched successfully.")
