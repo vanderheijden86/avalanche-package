@@ -22,6 +22,8 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/avalanchego/wallet/chain/p"
+	"github.com/ava-labs/avalanchego/wallet/chain/p/builder"
+	p_signer "github.com/ava-labs/avalanchego/wallet/chain/p/signer"
 	"github.com/ava-labs/avalanchego/wallet/chain/x"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
@@ -85,8 +87,8 @@ type wallet struct {
 	addr     ids.ShortID
 	pWallet  p.Wallet
 	pBackend p.Backend
-	pBuilder p.Builder
-	pSigner  p.Signer
+	pBuilder builder.Builder
+	pSigner  p_signer.Signer
 	xWallet  x.Wallet
 }
 
@@ -258,7 +260,7 @@ func addPermissionlessValidator(w *wallet, assetId ids.ID, subnetId ids.ID, numV
 		}
 		startTime := time.Now().Add(startTimeDelayFromNow)
 		endTime := startTime.Add(endTimeFromStartTime)
-		validatorId, err := w.pWallet.IssueAddPermissionlessValidatorTx(
+		validatorTx, err := w.pWallet.IssueAddPermissionlessValidatorTx(
 			&txs.SubnetValidator{
 				Validator: txs.Validator{
 					NodeID: nodeId,
@@ -279,14 +281,14 @@ func addPermissionlessValidator(w *wallet, assetId ids.ID, subnetId ids.ID, numV
 		if err != nil {
 			return nil, fmt.Errorf("an error occurred while adding validator '%v': %v", index, err)
 		}
-		validatorIDs = append(validatorIDs, validatorId)
+		validatorIDs = append(validatorIDs, validatorTx.ID())
 	}
 	return validatorIDs, nil
 }
 
 func transformSubnet(w *wallet, subnetId ids.ID, assetId ids.ID) (ids.ID, error) {
 	ctx := context.Background()
-	transformId, err := w.pWallet.IssueTransformSubnetTx(
+	transformSubnetTx, err := w.pWallet.IssueTransformSubnetTx(
 		subnetId,
 		assetId,
 		uint64(defaultInitialSupply),
@@ -306,7 +308,7 @@ func transformSubnet(w *wallet, subnetId ids.ID, assetId ids.ID) (ids.ID, error)
 	if err != nil {
 		return ids.Empty, err
 	}
-	return transformId, err
+	return transformSubnetTx.ID(), err
 }
 
 func createAssetOnXChainImportToPChain(w *wallet, name string, symbol string, denomination byte, maxSupply uint64) (ids.ID, ids.ID, ids.ID, error) {
@@ -317,7 +319,7 @@ func createAssetOnXChainImportToPChain(w *wallet, name string, symbol string, de
 			genesis.EWOQKey.PublicKey().Address(),
 		},
 	}
-	assetId, err := w.xWallet.IssueCreateAssetTx(
+	assetTx, err := w.xWallet.IssueCreateAssetTx(
 		name,
 		symbol,
 		denomination,
@@ -340,7 +342,7 @@ func createAssetOnXChainImportToPChain(w *wallet, name string, symbol string, de
 		[]*avax.TransferableOutput{
 			{
 				Asset: avax.Asset{
-					ID: assetId,
+					ID: assetTx.ID(),
 				},
 				Out: &secp256k1fx.TransferOutput{
 					Amt:          maxSupply,
@@ -354,14 +356,14 @@ func createAssetOnXChainImportToPChain(w *wallet, name string, symbol string, de
 		return ids.Empty, ids.Empty, ids.Empty, fmt.Errorf("an error occurred while issuing asset export: %v", err)
 	}
 	importId, err := w.pWallet.IssueImportTx(
-		w.xWallet.BlockchainID(),
+		,
 		owner,
 		common.WithContext(ctx),
 	)
 	if err != nil {
 		return ids.Empty, ids.Empty, ids.Empty, fmt.Errorf("an error occurred while issuing asset import: %v", err)
 	}
-	return assetId, exportId, importId, nil
+	return assetTx, exportId, importId, nil
 }
 
 func addSubnetValidators(w *wallet, subnetId ids.ID, numValidators int) ([]ids.ID, error) {
@@ -452,7 +454,12 @@ func createSubnet(w *wallet) (ids.ID, error) {
 func newWallet(uri string) (*wallet, error) {
 	ctx := context.Background()
 	kc := secp256k1fx.NewKeychain(genesis.EWOQKey)
-	pCTX, xCTX, utxos, err := primary.FetchState(ctx, uri, kc.Addresses())
+	state, err := primary.FetchState(ctx, uri, kc.Addresses())
+
+	pCTX := state.PCTX
+	xCTX := state.XCTX
+	utxos := state.UTXOs
+
 	if err != nil {
 		return nil, err
 	}

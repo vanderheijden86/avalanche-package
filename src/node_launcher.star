@@ -192,31 +192,31 @@ def download_to_path(plan, node_name, url, dest):
         )
     )
 
-def launch_awm_relayer(plan, p_chain_api_url, info_api_url, source_blockchains, destination_blockchains):
-    # Define the AWM relayer configuration as a regular Python dictionary
-    awm_relayer_config = json.encode({
-    "p-chain-api-url": p_chain_api_url,
-    "info-api-url": info_api_url,
-    "storage-location": "./awm-relayer-storage",
-    "redis-url": "",
-    "process-missed-blocks": True,
-    "source-blockchains": source_blockchains,
-    "destination-blockchains": destination_blockchains
-    })
+# def launch_awm_relayer(plan, p_chain_api_url, info_api_url, source_blockchains, destination_blockchains):
+#     # Define the AWM relayer configuration as a regular Python dictionary
+#     awm_relayer_config = json.encode({
+#     "p-chain-api-url": p_chain_api_url,
+#     "info-api-url": info_api_url,
+#     "storage-location": "./awm-relayer-storage",
+#     "redis-url": "",
+#     "process-missed-blocks": True,
+#     "source-blockchains": source_blockchains,
+#     "destination-blockchains": destination_blockchains
+#     })
 
-    # Create a file artifact in Kurtosis (if this method is available)
-    artifact_name = "awm-relayer-config.json"
-    plan.upload_files(awm_relayer_config, artifact_name)
+#     # Create a file artifact in Kurtosis (if this method is available)
+#     artifact_name = "awm-relayer-config.json"
+#     plan.upload_files(awm_relayer_config, artifact_name)
 
-    # Assuming your application can start with a command line argument for the config path
-    awm_relayer_service_config = ServiceConfig(
-        image="avaplatform/awm-relayer:v1.1.0",
-        entrypoint=["/bin/sh", "-c"],
-        cmd=[f"awm-relayer --config-file /configs/{artifact_name}"],
-        files={"/configs/": artifact_name}
-    )
+#     # Assuming your application can start with a command line argument for the config path
+#     awm_relayer_service_config = ServiceConfig(
+#         image="avaplatform/awm-relayer:v1.1.0",
+#         entrypoint=["/bin/sh", "-c"],
+#         cmd=[f"awm-relayer --config-file /configs/{artifact_name}"],
+#         files={"/configs/": artifact_name}
+#     )
 
 
-    # Add the AWM relayer service to the plan
-    plan.add_services({"awm-relayer": awm_relayer_service_config})
-    plan.print("AWM Relayer launched successfully.")
+#     # Add the AWM relayer service to the plan
+#     plan.add_services({"awm-relayer": awm_relayer_service_config})
+#     plan.print("AWM Relayer launched successfully.")

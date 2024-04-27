@@ -63,6 +63,6 @@ def run(plan, args):
     plan.print("p_chain_api_url: {0}\ninfo_api_url: {1}".format(p_chain_api_url, info_api_url))
     source_blockchains = []
     destination_blockchains = []
-    node_launcher.launch_awm_relayer(plan, p_chain_api_url, info_api_url, source_blockchains, destination_blockchains)
+    # node_launcher.launch_awm_relayer(plan, p_chain_api_url, info_api_url, source_blockchains, destination_blockchains)
     
     return output
