@@ -1,6 +1,6 @@
 module github.com/kurtosis-tech/avalanche-package/wallet
 
-go 1.22.2
+go 1.22
 
 require (
 	github.com/ava-labs/avalanche-network-runner v1.6.0
