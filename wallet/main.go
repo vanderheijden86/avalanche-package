@@ -7,6 +7,7 @@ import (
 	"github.com/ava-labs/avalanchego/wallet/chain/c"
 	"log"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -107,6 +108,22 @@ var (
 // subnetId, chainId, validatorIds, allocations, genesisChainId, assetId, transformationId, exportId, importId =
 // builder_service.create_subnet(plan, first_private_rpc_url, num_validators, is_elastic, vmId, chainName)
 func main() {
+	// Start the debugger server if the DEBUG environment variable is set
+	if os.Getenv("DEBUG") == "true" {
+		cmd := exec.Command("dlv", "debug", "--headless", "--listen=:2345", "--api-version=2", "--log")
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		err := cmd.Start()
+		if err != nil {
+			log.Fatalf("starting delve failed: %v", err)
+		}
+		// Wait for delve to exit
+		err = cmd.Wait()
+		if err != nil {
+			log.Fatalf("delve exited with error: %v", err)
+		}
+	}
+
 	if len(os.Args) < minArgs {
 		fmt.Printf("Need at least '%v' args got '%v'\n", minArgs, len(os.Args))
 		os.Exit(nonZeroExitCode)
