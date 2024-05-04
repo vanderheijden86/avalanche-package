@@ -33,7 +33,7 @@ def launch(plan, genesis, image, node_count, ephemeral_ports, min_cpu, min_memor
         launch_node_cmd = [
             "nohup",
             "/avalanchego/build/" + EXECUTABLE_PATH,
-            "--genesis=/tmp/data/genesis.json",
+            "--genesis-file=/tmp/data/genesis.json",
             "--data-dir=" + node_data_dirpath,
             "--config-file=" + node_config_filepath,
             "--http-host=0.0.0.0",
@@ -51,6 +51,9 @@ def launch(plan, genesis, image, node_count, ephemeral_ports, min_cpu, min_memor
         log_files_cmds = ["touch /tmp/{0}".format(log_file) for log_file in log_files]
         log_file_cmd = " && ".join(log_files_cmds)
 
+        subnet_evm_plugin = plan.upload_files(
+        "../static_files/subnet-evm")
+
         node_service_config = ServiceConfig(
             image = image,
             ports = {
@@ -60,6 +63,7 @@ def launch(plan, genesis, image, node_count, ephemeral_ports, min_cpu, min_memor
             entrypoint = ["/bin/sh", "-c", log_file_cmd + " && cd /tmp && tail -F *.log"],
             files = {
                 "/tmp/data": genesis,
+                "/avalanchego/build/plugins": subnet_evm_plugin,
             },
             public_ports = public_ports,
             min_cpu  = min_cpu,
